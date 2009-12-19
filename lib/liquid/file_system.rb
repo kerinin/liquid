@@ -31,21 +31,33 @@ module Liquid
   # file_system.full_path("mypartial")       # => "/some/path/_mypartial.liquid"
   # file_system.full_path("dir/mypartial")   # => "/some/path/dir/_mypartial.liquid"
   #
+  # Multi-path Example:
+  #
+  # file_system = Liquid::LocalFileSystem.new( ["/some/path", "/some/other/path"] )
+  #
+  # file_system.full_path("mypartial")        # => "/some/path/_mypartial.liquid"
+  # file_system.full_path("mypartial", 0)     # => "/some/path/_mypartial.liquid"
+  # file_system.full_path("mypartial", 1)     # => "some/other/path/_mypartial.liquid"
+  #
+  
   class LocalFileSystem
     attr_accessor :root
     
-    def initialize(root)
-      @root = root
+    def initialize(roots)
+     @roots = roots.to_a
     end
     
     def read_template_file(template_path)
-      full_path = full_path(template_path)
-      raise FileSystemError, "No such template '#{template_path}'" unless File.exists?(full_path)
-      
-      File.read(full_path)
+      @roots.each_index do |i|
+        full_path = full_path(template_path, i)
+        return File.read( full_path ) if File.exists?( full_path )
+      end
+      raise FileSystemError, "No such template '#{template_path}'"
     end
     
-    def full_path(template_path)
+    def full_path(template_path, root_index = 0)
+      root = @roots[ root_index ]
+      
       raise FileSystemError, "Illegal template name '#{template_path}'" unless template_path =~ /^[^.\/][a-zA-Z0-9_\/]+$/
       
       full_path = if template_path.include?('/')
